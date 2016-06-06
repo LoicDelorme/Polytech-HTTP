@@ -1,0 +1,72 @@
+package fr.polytech.http;
+
+import java.io.File;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+/**
+ * This class represents an HTTP server.
+ *
+ * @author DELORME Loïc
+ * @since 1.0.0
+ */
+public class HttpServer implements Runnable
+{
+	/**
+	 * The default port.
+	 */
+	public static final int DEFAULT_PORT = 1026;
+
+	/**
+	 * The HTTP version.
+	 */
+	public static final String HTTP_VERSION = "HTTP/1.1";
+
+	/**
+	 * The number of connection.
+	 */
+	private final int nbConnection;
+
+	/**
+	 * The resources directory.
+	 */
+	private File directory;
+
+	/**
+	 * Create an HTTP server.
+	 * 
+	 * @param nbConnection
+	 *            The number of connection.
+	 * @param directory
+	 *            The resources directory.
+	 */
+	public HttpServer(int nbConnection, File directory)
+	{
+		this.nbConnection = nbConnection;
+		this.directory = directory;
+	}
+
+	/**
+	 * @see java.lang.Runnable#run()
+	 */
+	@SuppressWarnings("resource")
+	@Override
+	public void run()
+	{
+		try
+		{
+			final ServerSocket socket = new ServerSocket(DEFAULT_PORT, this.nbConnection);
+			while (true)
+			{
+				final Socket clientSocket = socket.accept();
+				new HttpServerWorker(clientSocket, this.directory).run();
+			}
+
+			// socket.close();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+}
