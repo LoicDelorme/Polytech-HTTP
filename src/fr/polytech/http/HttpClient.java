@@ -82,10 +82,7 @@ public class HttpClient
 		final StringBuilder data = new StringBuilder();
 		while (((readByte = bufferedInputStream.read()) != 255) || (bufferedInputStream.available() > 0))
 		{
-			if (readByte != 255)
-			{
-				data.append((char) readByte);
-			}
+			data.append((char) readByte);
 		}
 
 		final String[] parsedData = data.toString().split("\r\n\r\n");
