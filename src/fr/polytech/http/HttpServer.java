@@ -1,6 +1,7 @@
 package fr.polytech.http;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -13,14 +14,14 @@ import java.net.Socket;
 public class HttpServer implements Runnable
 {
 	/**
-	 * The default port.
-	 */
-	public static final int DEFAULT_PORT = 1026;
-
-	/**
 	 * The HTTP version.
 	 */
 	public static final String HTTP_VERSION = "HTTP/1.1";
+
+	/**
+	 * The port.
+	 */
+	private final int port;
 
 	/**
 	 * The number of connection.
@@ -35,13 +36,16 @@ public class HttpServer implements Runnable
 	/**
 	 * Create an HTTP server.
 	 * 
+	 * @param port
+	 *            The port.
 	 * @param nbConnection
 	 *            The number of connection.
 	 * @param directory
 	 *            The resources directory.
 	 */
-	public HttpServer(int nbConnection, File directory)
+	public HttpServer(int port, int nbConnection, File directory)
 	{
+		this.port = port;
 		this.nbConnection = nbConnection;
 		this.directory = directory;
 	}
@@ -49,23 +53,31 @@ public class HttpServer implements Runnable
 	/**
 	 * @see java.lang.Runnable#run()
 	 */
-	@SuppressWarnings("resource")
 	@Override
 	public void run()
 	{
+		ServerSocket socket = null;
 		try
 		{
-			final ServerSocket socket = new ServerSocket(DEFAULT_PORT, this.nbConnection);
+			socket = new ServerSocket(this.port, this.nbConnection);
 			while (true)
 			{
 				final Socket clientSocket = socket.accept();
-				new HttpServerWorker(clientSocket, this.directory).run();
+				final HttpServerWorker httpServerWorker = new HttpServerWorker(clientSocket, this.directory);
+				httpServerWorker.run();
 			}
-
-			// socket.close();
 		}
 		catch (Exception e)
 		{
+			try
+			{
+				socket.close();
+			}
+			catch (IOException e1)
+			{
+				e1.printStackTrace();
+			}
+
 			e.printStackTrace();
 		}
 	}

@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Arrays;
 
 /**
  * This class represents an HTTP server worker.
@@ -55,20 +56,18 @@ public class HttpServerWorker implements Runnable
 			final BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
 			final BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
 
-			while (this.socket.isConnected())
+			while (true)
 			{
-				int readByte;
-				final int newLineCharacterCode = 10;
 				final StringBuilder data = new StringBuilder();
-				while (true)
+				int readByte;
+				while (((readByte = bufferedInputStream.read()) != 255) && (readByte != -1))
 				{
-					readByte = bufferedInputStream.read();
 					data.append((char) readByte);
+				}
 
-					if (readByte == newLineCharacterCode)
-					{
-						break;
-					}
+				if (readByte == -1)
+				{
+					break;
 				}
 
 				final String initialRequest = data.toString();
@@ -81,9 +80,18 @@ public class HttpServerWorker implements Runnable
 					continue;
 				}
 
-				if (!sameHttpVersion(parsedRequest[2]))
+				if (!HttpServer.HTTP_VERSION.equals(parsedRequest[2]))
 				{
 					bufferedOutputStream.write(String.format("%s 505 HTTP Version not supported\r\n", HttpServer.HTTP_VERSION).getBytes());
+					bufferedOutputStream.flush();
+					continue;
+				}
+
+				final String parsedResource = parsedRequest[1].substring(parsedRequest[1].lastIndexOf("/"), parsedRequest[1].length());
+				final File resourceFile = new File(this.directory, parsedResource);
+				if (!resourceFile.exists())
+				{
+					bufferedOutputStream.write(String.format("%s 404 Not Found\r\n", HttpServer.HTTP_VERSION).getBytes());
 					bufferedOutputStream.flush();
 					continue;
 				}
@@ -91,47 +99,31 @@ public class HttpServerWorker implements Runnable
 				switch (parsedRequest[0])
 				{
 					case "GET":
-						if (!resourceExists(parsedRequest[1]))
+						final byte[] resource = Files.readAllBytes(resourceFile.toPath());
+
+						final StringBuilder httpAnswer = new StringBuilder();
+						httpAnswer.append(HttpServer.HTTP_VERSION);
+						httpAnswer.append(" ");
+						httpAnswer.append("200 OK");
+						httpAnswer.append("\r\n");
+						httpAnswer.append("Content-Length: ");
+						httpAnswer.append(resource.length);
+						httpAnswer.append("\r\n");
+						httpAnswer.append("Content-Type: ");
+						httpAnswer.append("text/html");
+						httpAnswer.append("\r\n");
+						httpAnswer.append("\r\n");
+						final byte[] httpAnswerBytes = httpAnswer.toString().getBytes();
+
+						final byte[] answer = Arrays.copyOf(httpAnswerBytes, httpAnswerBytes.length + resource.length + 1);
+						for (int index = 0; index < resource.length; index++)
 						{
-							bufferedOutputStream.write(String.format("%s 404 Not Found\r\n", HttpServer.HTTP_VERSION).getBytes());
-							bufferedOutputStream.flush();
+							answer[httpAnswerBytes.length + index] = resource[index];
 						}
-						else
-						{
-							final byte[] readData = readResource(parsedRequest[1]);
+						answer[httpAnswerBytes.length + resource.length] = -1;
 
-							final StringBuilder answer = new StringBuilder();
-							answer.append(HttpServer.HTTP_VERSION);
-							answer.append(" ");
-							answer.append("200 OK");
-							answer.append("\r\n");
-
-							answer.append("Content-Length: ");
-							answer.append(readData.length);
-							answer.append("\r\n");
-
-							answer.append("Content-Type: ");
-							answer.append("text/html");
-							answer.append("\r\n");
-
-							answer.append("\r\n");
-
-							final byte[] answerBegin = answer.toString().getBytes();
-
-							final byte[] finalData = new byte[answerBegin.length + readData.length];
-							for (int index = 0; index < answerBegin.length; index++)
-							{
-								finalData[index] = answerBegin[index];
-							}
-
-							for (int index = 0; index < readData.length; index++)
-							{
-								finalData[answerBegin.length + index] = readData[index];
-							}
-
-							bufferedOutputStream.write(finalData);
-							bufferedOutputStream.flush();
-						}
+						bufferedOutputStream.write(answer);
+						bufferedOutputStream.flush();
 						break;
 					default:
 						bufferedOutputStream.write(String.format("%s 405 Method Not Allowed\r\n", HttpServer.HTTP_VERSION).getBytes());
@@ -146,55 +138,5 @@ public class HttpServerWorker implements Runnable
 		{
 			e.printStackTrace();
 		}
-	}
-
-	/**
-	 * Read resource.
-	 * 
-	 * @param resource
-	 *            The resource path.
-	 * @return The read data.
-	 */
-	private byte[] readResource(String resource)
-	{
-		try
-		{
-			final String parsedResource = resource.substring(resource.lastIndexOf("/"), resource.length());
-			final File resourceFile = new File(this.directory, parsedResource);
-			return Files.readAllBytes(resourceFile.toPath());
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		return null;
-	}
-
-	/**
-	 * Check if the resource exists.
-	 * 
-	 * @param resource
-	 *            The resource path.
-	 * @return True or False.
-	 */
-	private boolean resourceExists(String resource)
-	{
-		final String parsedResource = resource.substring(resource.lastIndexOf("/"), resource.length());
-		final File resourceFile = new File(this.directory, parsedResource);
-
-		return resourceFile.exists();
-	}
-
-	/**
-	 * Check if the client's HTTP version is the same that the server.
-	 * 
-	 * @param httpVersion
-	 *            The HTTP version.
-	 * @return True or False.
-	 */
-	private boolean sameHttpVersion(String httpVersion)
-	{
-		return (httpVersion.compareTo(HttpServer.HTTP_VERSION) == 0);
 	}
 }

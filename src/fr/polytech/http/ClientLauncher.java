@@ -1,11 +1,10 @@
 package fr.polytech.http;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.InetAddress;
 
 /**
- * This class represents
+ * This class represents an HTTP client launcher.
  *
  * @author DELORME Loïc
  * @since 1.0.0
@@ -22,9 +21,17 @@ public class ClientLauncher
 	 */
 	public static final File DEFAULT_DIRECTORY = new File("D:/Downloads/TEMP/client/");
 
-	public static void main(String[] args) throws IOException
+	/**
+	 * The entry of the application.
+	 * 
+	 * @param args
+	 *            Some arguments.
+	 * @throws Exception
+	 *             If an error occurred.
+	 */
+	public static void main(String[] args) throws Exception
 	{
 		final HttpClient client = new HttpClient(DEFAULT_DIRECTORY);
-		client.executeGet("localhost:1026/index.html", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
+		client.executeGet("localhost:1026/delormel.png", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
 	}
 }

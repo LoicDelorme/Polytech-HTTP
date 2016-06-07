@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 
 /**
  * This class represents an HTTP client.
@@ -62,30 +63,42 @@ public class HttpClient
 		final BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
 		final BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
 
-		final String httpRequest = String.format("%s %s %s\r\n", HttpMethods.GET.toString(), resource, HTTP_VERSION);
-		bufferedOutputStream.write(httpRequest.getBytes());
+		final StringBuilder httpRequest = new StringBuilder();
+		httpRequest.append(HttpMethods.GET);
+		httpRequest.append(" ");
+		httpRequest.append(resource);
+		httpRequest.append(" ");
+		httpRequest.append(HTTP_VERSION);
+		httpRequest.append("\r\n");
+		final byte[] httpRequestBytes = httpRequest.toString().getBytes();
+
+		final byte[] requestBytes = Arrays.copyOf(httpRequestBytes, httpRequestBytes.length + 1);
+		requestBytes[httpRequestBytes.length] = -1;
+
+		bufferedOutputStream.write(requestBytes);
 		bufferedOutputStream.flush();
 
 		int readByte;
-		int offset;
 		final StringBuilder data = new StringBuilder();
-		while (((readByte = bufferedInputStream.read()) != 1) && ((offset = bufferedInputStream.available()) > 0))
+		while (((readByte = bufferedInputStream.read()) != 255) || (bufferedInputStream.available() > 0))
 		{
-			data.append((char) readByte);
+			if (readByte != 255)
+			{
+				data.append((char) readByte);
+			}
 		}
 
-		data.append((char) readByte);
-
-		final String[] parsedData = data.toString().split("\r\n");
-
-		if (parsedData[0].equals(HTTP_VERSION + " 200 OK"))
+		final String[] parsedData = data.toString().split("\r\n\r\n");
+		final String[] parsedAnswer = parsedData[0].split("\r\n");
+		if (parsedAnswer[0].equals(HTTP_VERSION + " 200 OK"))
 		{
 			final String fileName = resource.substring(resource.lastIndexOf("/"), resource.length());
-			Files.write(new File(this.directory, fileName).toPath(), parsedData[parsedData.length - 1].getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+			final File resourceFile = new File(this.directory, fileName);
+			Files.write(resourceFile.toPath(), parsedData[parsedData.length - 1].getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 		}
 		else
 		{
-			System.err.println(parsedData[0]);
+			System.err.println(parsedAnswer[0]);
 		}
 
 		socket.close();

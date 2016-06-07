@@ -1,7 +1,6 @@
 package fr.polytech.http;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * This class represents a server launcher.
@@ -12,18 +11,29 @@ import java.io.IOException;
 public class ServerLauncher
 {
 	/**
-	 * The number of connection.
+	 * The default port.
 	 */
-	public static final int NB_CONNECTIONS = 6;
+	public static final int DEFAULT_PORT = 1026;
+
+	/**
+	 * The default number of connection.
+	 */
+	public static final int DEFAULT_NB_CONNECTIONS = 6;
 
 	/**
 	 * The default directory.
 	 */
 	public static final File DEFAULT_DIRECTORY = new File("D:/Downloads/TEMP/server/");
 
-	public static void main(String[] args) throws IOException
+	/**
+	 * The entry of the application.
+	 * 
+	 * @param args
+	 *            Some arguments.
+	 */
+	public static void main(String[] args)
 	{
-		final HttpServer server = new HttpServer(NB_CONNECTIONS, DEFAULT_DIRECTORY);
+		final HttpServer server = new HttpServer(DEFAULT_PORT, DEFAULT_NB_CONNECTIONS, DEFAULT_DIRECTORY);
 		server.run();
 	}
 }
