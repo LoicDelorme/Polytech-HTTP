@@ -80,7 +80,7 @@ public class HttpClient
 
 		int readByte;
 		final StringBuilder data = new StringBuilder();
-		while (((readByte = bufferedInputStream.read()) != 255) || (bufferedInputStream.available() > 0))
+		while ((readByte = bufferedInputStream.read()) != 255)
 		{
 			data.append((char) readByte);
 		}
