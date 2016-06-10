@@ -14,9 +14,9 @@ import java.net.Socket;
 public class HttpServer implements Runnable
 {
 	/**
-	 * The HTTP version.
+	 * The server HTTP version.
 	 */
-	public static final String HTTP_VERSION = "HTTP/1.1";
+	public static final String SERVER_HTTP_VERSION = "HTTP/1.1";
 
 	/**
 	 * The port.
@@ -63,8 +63,7 @@ public class HttpServer implements Runnable
 			while (true)
 			{
 				final Socket clientSocket = socket.accept();
-				final HttpServerWorker httpServerWorker = new HttpServerWorker(clientSocket, this.directory);
-				httpServerWorker.run();
+				new HttpServerWorker(clientSocket, this.directory).run();
 			}
 		}
 		catch (Exception e)
