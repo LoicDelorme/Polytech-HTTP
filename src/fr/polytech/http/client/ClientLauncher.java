@@ -32,6 +32,9 @@ public class ClientLauncher
 	public static void main(String[] args) throws Exception
 	{
 		final HttpClient client = new HttpClient(DEFAULT_DIRECTORY);
-		client.executeGet("index.txt", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
+		client.executeGet("/index.html", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
+
+		// final HttpClient client = new HttpClient(DEFAULT_DIRECTORY);
+		// client.executeGet("/index.html", InetAddress.getByName("www.google.fr"), 80);
 	}
 }

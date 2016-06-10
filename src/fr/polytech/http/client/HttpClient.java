@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import fr.polytech.http.HttpMethods;
@@ -21,9 +22,9 @@ import fr.polytech.http.HttpMethods;
 public class HttpClient
 {
 	/**
-	 * The HTTP version.
+	 * The client HTTP version.
 	 */
-	public static final String HTTP_VERSION = "HTTP/1.1";
+	public static final String CLIENT_HTTP_VERSION = "HTTP/1.1";
 
 	/**
 	 * The directory to save files.
@@ -57,32 +58,43 @@ public class HttpClient
 	{
 		final Socket socket = new Socket(address, port);
 
-		final PrintWriter outputStreamWriter = new PrintWriter(socket.getOutputStream(), true);
+		final boolean autoFlush = true;
+		final PrintWriter outputStreamWriter = new PrintWriter(socket.getOutputStream(), autoFlush);
 		final BufferedReader inputStreamReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-		final String httpRequest = String.format("%s %s %s\r\n", HttpMethods.GET, resource, HTTP_VERSION);
-		outputStreamWriter.print(httpRequest);
-		outputStreamWriter.print(-1);
+		outputStreamWriter.println(String.format("%s %s %s", HttpMethods.GET, resource, CLIENT_HTTP_VERSION));
+		outputStreamWriter.println("Connection: Close");
+		outputStreamWriter.println();
 
 		int data;
 		final StringBuilder dataBuilder = new StringBuilder();
-		while ((data = inputStreamReader.read()) != -1)
+		while (true)
 		{
-			dataBuilder.append(data);
+			if (inputStreamReader.ready())
+			{
+				while ((data = inputStreamReader.read()) != -1)
+				{
+					dataBuilder.append((char) data);
+				}
+
+				break;
+			}
 		}
 
 		final String answer = dataBuilder.toString();
-		final String[] parsedAnswer = answer.split("\r\n\r\n");
-		final String[] parsedRequest = parsedAnswer[0].split("\r\n");
-		final String resourceData = parsedAnswer[parsedAnswer.length - 1];
+		final String[] headersAndContent = answer.split("\r\n\r\n");
+		final String[] headers = headersAndContent[0].split("\r\n");
+		final String content = headersAndContent[1];
 
-		if (parsedRequest[0].equals(HTTP_VERSION + " 200 OK"))
+		if (headers[0].equals(CLIENT_HTTP_VERSION + " 200 OK") || headers[0].equals(CLIENT_HTTP_VERSION + " 302 Found"))
 		{
-			Files.write(new File(this.directory, resource).toPath(), resourceData.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+			final Path path = new File(this.directory, resource).toPath();
+			Files.write(path, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+			System.out.println(String.format("The file %s was writen into %s folder", resource, this.directory));
 		}
 		else
 		{
-			System.err.println(parsedRequest[0]);
+			System.err.println(headers[0]);
 		}
 
 		socket.close();
