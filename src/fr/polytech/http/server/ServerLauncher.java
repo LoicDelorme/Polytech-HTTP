@@ -1,4 +1,4 @@
-package fr.polytech.http;
+package fr.polytech.http.server;
 
 import java.io.File;
 

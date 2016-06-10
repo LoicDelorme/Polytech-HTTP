@@ -1,4 +1,4 @@
-package fr.polytech.http;
+package fr.polytech.http.client;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -32,6 +32,6 @@ public class ClientLauncher
 	public static void main(String[] args) throws Exception
 	{
 		final HttpClient client = new HttpClient(DEFAULT_DIRECTORY);
-		client.executeGet("localhost:1026/delormel.png", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
+		client.executeGet("index.txt", InetAddress.getByName("localhost"), DEFAULT_SERVER_PORT);
 	}
 }
