@@ -8,7 +8,6 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import fr.polytech.http.HttpMethods;
@@ -63,7 +62,6 @@ public class HttpClient
 		final BufferedReader inputStreamReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
 		outputStreamWriter.println(String.format("%s %s %s", HttpMethods.GET, resource, CLIENT_HTTP_VERSION));
-		outputStreamWriter.println("Connection: Close");
 		outputStreamWriter.println();
 
 		int data;
@@ -84,12 +82,14 @@ public class HttpClient
 		final String answer = dataBuilder.toString();
 		final String[] headersAndContent = answer.split("\r\n\r\n");
 		final String[] headers = headersAndContent[0].split("\r\n");
-		final String content = headersAndContent[1];
-
 		if (headers[0].equals(CLIENT_HTTP_VERSION + " 200 OK") || headers[0].equals(CLIENT_HTTP_VERSION + " 302 Found"))
 		{
-			final Path path = new File(this.directory, resource).toPath();
-			Files.write(path, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+			final StringBuilder content = new StringBuilder();
+			for (int index = 1; index < headersAndContent.length; index++)
+			{
+				content.append(headersAndContent[index]);
+			}
+			Files.write(new File(this.directory, resource).toPath(), content.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 			System.out.println(String.format("The file %s was writen into %s folder", resource, this.directory));
 		}
 		else

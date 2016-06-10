@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.util.Arrays;
 
 /**
  * This class represents an HTTP server worker.
@@ -49,66 +49,66 @@ public class HttpServerWorker implements Runnable
 	{
 		try
 		{
-			final PrintWriter outputStreamWriter = new PrintWriter(this.socket.getOutputStream(), true);
+			final boolean autoFlush = true;
+			final PrintWriter outputStreamWriter = new PrintWriter(this.socket.getOutputStream(), autoFlush);
 			final BufferedReader inputStreamReader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 
-			while (true)
+			boolean isRunning = true;
+			while (isRunning)
 			{
 				String data;
 				final StringBuilder dataBuilder = new StringBuilder();
-				while (((data = inputStreamReader.readLine()) != null) && (!"-1".equals(data)))
+				while (((data = inputStreamReader.readLine()) != null) && (!data.isEmpty()))
 				{
 					dataBuilder.append(data);
 				}
 
-				if (dataBuilder.length() == 0)
+				final String incomingRequest = dataBuilder.toString();
+				if (incomingRequest.isEmpty())
 				{
 					break;
 				}
 
-				final String request = dataBuilder.toString();
-				final String[] parsedRequest = request.split(" ");
-
-				if (parsedRequest.length != 3)
+				final String[] parsedIncomingRequest = incomingRequest.split(" ");
+				if (parsedIncomingRequest.length != 3)
 				{
-					outputStreamWriter.println(String.format("%s 400 Bad Request\r\n", HttpServer.HTTP_VERSION));
-					outputStreamWriter.println("-1");
-					continue;
+					outputStreamWriter.println(String.format("%s 400 Bad Request", HttpServer.SERVER_HTTP_VERSION));
+					outputStreamWriter.println();
+					break;
 				}
 
-				if (!HttpServer.HTTP_VERSION.equals(parsedRequest[2]))
+				if (!HttpServer.SERVER_HTTP_VERSION.equals(parsedIncomingRequest[2]))
 				{
-					outputStreamWriter.println(String.format("%s 505 HTTP Version not supported\r\n", HttpServer.HTTP_VERSION));
-					outputStreamWriter.println("-1");
-					continue;
+					outputStreamWriter.println(String.format("%s 505 HTTP Version not supported", HttpServer.SERVER_HTTP_VERSION));
+					outputStreamWriter.println();
+					break;
 				}
 
-				final File resourceFile = new File(this.directory, parsedRequest[1]);
-				if (!resourceFile.exists())
+				final File resource = new File(this.directory, parsedIncomingRequest[1]);
+				if (!resource.exists())
 				{
-					outputStreamWriter.println(String.format("%s 404 Not Found\r\n", HttpServer.HTTP_VERSION));
-					outputStreamWriter.println("-1");
-					continue;
+					outputStreamWriter.println(String.format("%s 404 Not Found", HttpServer.SERVER_HTTP_VERSION));
+					outputStreamWriter.println();
+					break;
 				}
 
-				switch (parsedRequest[0])
+				switch (parsedIncomingRequest[0])
 				{
 					case "GET":
-						final byte[] requestedResourceData = Files.readAllBytes(resourceFile.toPath());
-						final byte[] formatedAnswer = String.format("%s 200 OK\r\nContent-Length: %d\r\nContent-Type: %s\r\n\r\n", HttpServer.HTTP_VERSION, requestedResourceData.length, "text/html").getBytes();
+						final byte[] resourceData = Files.readAllBytes(resource.toPath());
 
-						final byte[] finalAnswer = Arrays.copyOf(formatedAnswer, formatedAnswer.length + requestedResourceData.length);
-						for (int offset = 0; offset < requestedResourceData.length; offset++)
-						{
-							finalAnswer[formatedAnswer.length + offset] = requestedResourceData[offset];
-						}
-
-						outputStreamWriter.println(new String(finalAnswer));
-						outputStreamWriter.println("-1");
+						outputStreamWriter.println(String.format("%s 200 OK", HttpServer.SERVER_HTTP_VERSION));
+						outputStreamWriter.println(String.format("Content-Length: %d", resourceData.length));
+						outputStreamWriter.println(String.format("Content-Type: %s", getContentType(resource)));
+						outputStreamWriter.println();
+						outputStreamWriter.println(new String(resourceData, Charset.forName("UTF-8")));
+						outputStreamWriter.println();
+						isRunning = false;
 						break;
 					default:
-						outputStreamWriter.println(String.format("%s 405 Method Not Allowed\r\n", HttpServer.HTTP_VERSION));
-						outputStreamWriter.println("-1");
+						outputStreamWriter.println(String.format("%s 405 Method Not Allowed", HttpServer.SERVER_HTTP_VERSION));
+						outputStreamWriter.println();
+						isRunning = false;
 						break;
 				}
 			}
@@ -118,6 +118,32 @@ public class HttpServerWorker implements Runnable
 		catch (IOException e)
 		{
 			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Get the content type according to the resource's extension.
+	 * 
+	 * @param resource
+	 *            The resource.
+	 * @return The corresponding content type.
+	 */
+	private String getContentType(File resource)
+	{
+		final String resourceName = resource.getName();
+		final String extension = resourceName.substring(resourceName.lastIndexOf("."), resourceName.length());
+		switch (extension)
+		{
+			case ".txt":
+				return "text/plain";
+			case ".html":
+				return "text/html";
+			case ".png":
+				return "image/png";
+			case ".jpg":
+				return "image/jpg";
+			default:
+				return "";
 		}
 	}
 }
